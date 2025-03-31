@@ -7,7 +7,7 @@ export default {
     input: 'index.js',
     output: {
         name: 'ASDK',
-        file: 'dist/bundle.js',
+        file: 'dist/affise-web-sdk.js',
         format: 'umd'
     },
     plugins: [

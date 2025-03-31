@@ -2,7 +2,7 @@ import 'whatwg-fetch';
 import 'url-polyfill';
 import 'promise-polyfill/src/polyfill';
 
-export default class AffiseSDK {
+class ASDK {
     constructor(customParamProvider) {
         if (this.constructor === AffiseSDK) {
             throw new TypeError("Can not construct abstract class.");
@@ -214,6 +214,16 @@ export default class AffiseSDK {
                 if (!options.transaction_id) {
                     options.transaction_id = this._fetch(`aff_tid_${options.offer_id}`);
                 }
+            } else if (this._isDefined(options.advertiser_id)) {
+                const aid = options.advertiser_id;
+                options.transaction_id = this._fetch(`aff_tid_c_a_${aid}`);
+                if (!options.transaction_id) {
+                    options.transaction_id = this._fetch(`aff_tid_i_a_${aid}`);
+                }
+                // Fallback for previous cookies when we did not have advertiser and offer cookies
+                if (!options.transaction_id) {
+                    options.transaction_id = this._fetch(`aff_tid_${options.offer_id}`);
+                }
             }
         }
 
@@ -420,3 +430,43 @@ export default class AffiseSDK {
         return new URL(window.location.href).searchParams.get(name);
     }
 }
+
+class AffiseSDK extends ASDK {
+    constructor() {
+        super(Promise.resolve({}))
+    }
+
+    _fetch(key) {
+        const cookies = document.cookie
+            .split(';')
+            .map(v => v.split('='))
+            .reduce((acc, v) => {
+                try {
+                    acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
+                }
+                catch (e) { }
+                return acc;
+            }, {});
+
+        return cookies[key] ? cookies[key].trim() : '';
+    }
+
+    _persist(key, value, expirationDays = 30) {
+        const d = new Date();
+        d.setTime(d.getTime() + (expirationDays * 24 * 60 * 60 * 1000));
+
+        if (value.length > 1650) {
+            value = value.substring(0, 33) + value.substring(value.length - 1616, value.length);
+        }
+
+        if (this._tld) {
+            document.cookie = `${key}=${value};expires=${d.toUTCString()};path=/;domain=${this._tld}`
+        } else {
+            document.cookie = `${key}=${value};expires=${d.toUTCString()};path=/`
+        }
+    }
+}
+
+const globalInstance = new AffiseSDK();
+
+export default globalInstance;

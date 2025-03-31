@@ -2,11 +2,9 @@
   "name": "@affise/affise-web-sdk",
   "version": "0.1.1",
   "description": "Affise Web SDK",
-  "main": "dist/bundle.js",
+  "main": "dist/affise-web-sdk.js",
   "scripts": {
-    "vanilla": "rollup -c rollup.vanilla.config.js",
-    "umd": "rollup -c rollup.npm.config.js",
-    "build": "npm run vanilla && npm run umd"
+    "build": "rollup --config"
   },
   "repository": {
     "type": "git",
@@ -22,7 +20,7 @@
     "@babel/core": "7.21.4",
     "@babel/preset-env": "7.21.4",
     "babelrc-rollup": "3.0.0",
-    "rollup": "^2.50.3",
+    "rollup": "^2.79.2",
     "rollup-plugin-babel": "4.3.3",
     "rollup-plugin-commonjs": "10.0.1",
     "rollup-plugin-node-resolve": "5.2.0",

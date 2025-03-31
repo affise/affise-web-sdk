@@ -1,1 +1,1 @@
-export { default } from './src/vanilla_sdk'; 
+export { default } from './src/sdk';
