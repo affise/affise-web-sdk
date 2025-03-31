@@ -2,9 +2,10 @@
 
 Build sdk files:
 
+`npm install --legacy-peer-deps`
 `npm run build`
 
-Set the file bundle.js from dist folder to <head></head> of HTML page
+Set the file affise-web-sdk.js from dist folder to <head></head> of HTML page
 
 Configure the SDK before doing any tracking:
 
