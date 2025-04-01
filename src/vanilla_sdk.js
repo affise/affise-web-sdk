@@ -12,8 +12,8 @@ class SDK extends ASDK {
             .reduce((acc, v) => {
                 try {
                     acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
+                } catch (e) {
                 }
-                catch (e) { }
                 return acc;
             }, {});
 
@@ -27,12 +27,7 @@ class SDK extends ASDK {
         if (value.length > 1650) {
             value = value.substring(0, 33) + value.substring(value.length - 1616, value.length);
         }
-
-        if (this._tld) {
-            document.cookie = `${key}=${value};expires=${d.toUTCString()};path=/;domain=${this._tld}`
-        } else {
-            document.cookie = `${key}=${value};expires=${d.toUTCString()};path=/`
-        }
+        document.cookie = `${key}=${value};expires=${d.toUTCString()};path=/`
     }
 }
 

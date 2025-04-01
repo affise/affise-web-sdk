@@ -3,7 +3,7 @@ import 'url-polyfill';
 import 'promise-polyfill/src/polyfill';
 
 export default class AffiseSDK {
-    constructor(customParamProvider) {
+    constructor() {
         if (this.constructor === AffiseSDK) {
             throw new TypeError("Can not construct abstract class.");
         }
@@ -16,148 +16,124 @@ export default class AffiseSDK {
             throw new TypeError("Please implement abstract method _fetch.");
         }
 
-        this.customParamProvider = customParamProvider;
         this._trackingDomain = '<<.TrackingDomain>>';
-        this._organicEnabled = false;
     }
 
+    /**
+     * Configures the SDK with the provided options
+     * @param {Object} options
+     * @param {string} options.tracking_domain - Tracking domain to be used for tracking clicks
+     */
     configure(options) {
         if (this._isDefined(options.tracking_domain)) {
             this._trackingDomain = options.tracking_domain;
         }
-        if (this._isDefined(options.afoffer_id)) {
-            this._tld = options.afoffer_id;
-        }
-        if (this._isDefined(options.organic)) {
-            if (this._isDefined(options.organic.offer_id) && this._isDefined(options.organic.affiliate_id)) {
-                this._organicEnabled = true;
-                this._organicOptions = Object.assign(
-                    this._getDefaultOrganicClickOptions(),
-                    options.organic.options || {},
-                    { affiliate_id: options.organic.affiliate_id, offer_id: options.organic.offer_id }
-                );
-            }
-            else {
-                console.warn(`Unable to setup organic tracking. Missing "organic.offer_id" or "organic.affiliate_id" parameter.`)
-            }
-        }
     }
 
+    /**
+     * Tracks a click with the provided options
+     * @param {Object} options - Click tracking options
+     * @param {string} options.affiliate_id - (Required) Affiliate ID
+     * @param {string} options.offer_id - (Required) Offer ID
+     * @param {string} [options.tracking_domain] - Optional tracking domain to override the default
+     * @param {string} [options.ip] - User IP address
+     * @param {string} [options.user_agent] - User agent string
+     * @param {string} [options.ref_id] - Reference ID
+     * @param {string} [options.ref_android_id] - Android reference ID
+     * @param {string} [options.ref_device_id] - Device reference ID
+     * @param {string} [options.mac_address] - MAC address
+     * @param {string} [options.os_id] - Operating system ID
+     * @param {string} [options.user_id] - User ID
+     * @param {string} [options.ext1] - Extra parameter 1
+     * @param {string} [options.ext2] - Extra parameter 2
+     * @param {string} [options.ext3] - Extra parameter 3
+     * @param {string} [options.imp_id] - Impression ID
+     * @param {string} [options.unid] - Unique identifier
+     * @param {string} [options.fbclid] - Facebook click ID
+     * @param {string} [options.landing_id] - Landing page ID
+     * @param {string} [options.sub1] - Custom subparameter 1
+     * @param {string} [options.sub2] - Custom subparameter 2
+     * ... up to sub30
+     * @returns {Promise<string>} - Promise resolving to the click ID
+     */
     click(options) {
-        if (options.do_not_track === true) {
+        // check required options "offer_id" and "affiliate_id"
+        if (!this._isDefined(options.affiliate_id) || !this._isDefined(options.offer_id)) {
+            console.warn(`Unable to track. Missing "offer_id" or "affiliate_id" parameter.`)
             return Promise.resolve("");
         }
 
-        if (!options.offer_id) {
-            if (this._organicEnabled && !this._fetch('aff_witness')) {
-                options = this._organicOptions;
-            } else {
-                console.warn(`Unable to track. Missing "offer_id" or "transaction_id" parameter.`)
-                return Promise.resolve("");
-            }
-        }
-
         return new Promise((resolve, reject) => {
-            this._getCustomParams().then((customParams) => {
-                const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
+            const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
+            const url = new URL(`${trackingDomain}/click`)
+            const queryParams = new URLSearchParams(url.search + '&format=json&websdk=1');
 
-                const url = new URL(`${trackingDomain}/sdk/click`)
+            // required parameters
+            queryParams.set('pid', options.affiliate_id);
+            queryParams.set('offer_id', options.offer_id);
 
-                const queryParams = new URLSearchParams(url.search + '&format=json&websdk=1');
+            // options parameters and their mapping to API parameters
+            const paramsMap = {
+                'ip': 'ip',
+                'ua': 'user_agent',
+                'ref_id': 'ref_id',
+                'ref_android_id': 'ref_android_id',
+                'ref_device_id': 'ref_device_id',
+                'mac_address': 'mac_address',
+                'os_id': 'os_id',
+                'user_id': 'user_id',
+                'ext1': 'ext1',
+                'ext2': 'ext2',
+                'ext3': 'ext3',
+                'imp_id': 'imp_id',
+                'unid': 'unid',
+                'fbclid': 'fbclid',
+                'l': 'landing_id',
+            };
+            for (let i = 1; i <= 30; i++) {
+                paramsMap[`sub${i}`] = `sub${i}`;
+            }
 
-                for (const k in customParams) {
-                    if (customParams.hasOwnProperty(k)) {
-                        queryParams.set(k, customParams[k])
-                    }
+            for (const [key, value] of Object.entries(paramsMap)) {
+                if (this._isDefined(options[value])) {
+                    queryParams.set(key, options[value]);
                 }
+            }
 
-                queryParams.set('affid', options.affiliate_id || '');
-                queryParams.set('afoffer_id', options.offer_id || '');
+            // filter out empty values
+            for (const [key, value] of queryParams.entries()) {
+                if (value === '' || value === null || value === undefined) {
+                    queryParams.delete(key);
+                }
+            }
 
-                queryParams.set('afclick', options.click || '');
-                queryParams.set('affgoal', options.goal || '');
-                queryParams.set('afstatus', options.status || '');
-                queryParams.set('afcurrency', options.currency || '');
-                queryParams.set('afcomment', options.comment || '');
-                queryParams.set('afsecure', options.secure || '');
-                queryParams.set('afpromo_code', options.promo_code || '');
-                queryParams.set('afuser_id', options.user_id || '');
+            url.search = queryParams.toString();
 
-                queryParams.set('async', 'json')
-
-                if (this._isDefined(options.custom_field_1)) {
-                    queryParams.set('custom_field_1', options.custom_field_1)
-                }
-                if (this._isDefined(options.custom_field_2)) {
-                    queryParams.set('custom_field_2', options.custom_field_2)
-                }
-                if (this._isDefined(options.custom_field_3)) {
-                    queryParams.set('custom_field_3', options.custom_field_3)
-                }
-                if (this._isDefined(options.custom_field_4)) {
-                    queryParams.set('custom_field_4', options.custom_field_4)
-                }
-                if (this._isDefined(options.custom_field_5)) {
-                    queryParams.set('custom_field_5', options.custom_field_5)
-                }
-                if (this._isDefined(options.custom_field_6)) {
-                    queryParams.set('custom_field_6', options.custom_field_6)
-                }
-                if (this._isDefined(options.custom_field_7)) {
-                    queryParams.set('custom_field_7', options.custom_field_7)
-                }
-
-                url.search = queryParams.toString();
-
-                fetch(url.toString(), {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                    .then((response) => response.json(),
-                        (error) => {
-                            console.error(error);
-                            resolve("");
-                        })
-                    .then((response) => {
-                        if (response.transaction_id && response.transaction_id.length > 0) {
-                            this._persist('aff_witness', '1');
-                            const tidOffer = this._fetch(`aff_tid_c_o_${response.oid || options.offer_id}`);
-                            this._persist(`aff_tid_c_o_${response.oid || options.offer_id}`, tidOffer && tidOffer.length > 0 ? `${tidOffer}|${response.transaction_id}` : response.transaction_id);
-                            const tidAdv = this._fetch(`aff_tid_c_a_${response.aid}`);
-                            this._persist(`aff_tid_c_a_${response.aid}`, tidAdv && tidAdv.length > 0 ? `${tidAdv}|${response.transaction_id}` : response.transaction_id);
-                            resolve(response.transaction_id);
-                        }
+            /**
+             * @typedef {object} response
+             * @property {string} clickid
+             */
+            fetch(url.toString(), {
+                method: 'GET',
+                credentials: 'include',
+            })
+                .then((response) => response.json(),
+                    (error) => {
+                        console.error(error);
+                        resolve("");
                     })
-            });
-        });
-    }
-
-    _getCustomParams() {
-        return Promise.all([
-            this.customParamProvider,
-            this._getClientHints()
-        ]).then((params) => {
-            return params.reduce((a, b) => Object.assign(a, b), {})
-        })
-    }
-
-    _getClientHints() {
-        if (window.navigator.userAgentData) {
-            return navigator.userAgentData.getHighEntropyValues(
-                [
-                    "platform",
-                    "platformVersion",
-                    "model"
-                ])
-                .then((ua) => {
-                    return {
-                        sec_ch_ua_platform: ua.platform,
-                        sec_ch_ua_platform_version: ua.platformVersion,
-                        sec_ch_ua_model: ua.model,
+                .then((response) => {
+                    if (response.clickid && response.clickid.length > 0) {
+                        // Tracking domain will set cookie "afclick" with clickid,
+                        // but this cookie will be allowed only for 1st party,
+                        // so let's copy clickid to our cookie
+                        // additionally let's associate clickid with offer_id
+                        // to allow tracking of multiple offers from page
+                        this._persist(`afclick_${options.offer_id}`, response.clickid, 365);
+                        resolve(response.clickid);
                     }
-                });
-        }
-        return Promise.resolve({})
+                })
+        });
     }
 
     _fetch(key) {
@@ -172,7 +148,21 @@ export default class AffiseSDK {
         return typeof value !== 'undefined' && value !== undefined && value !== null;
     }
 
+    /**
+     * Get the value of a URL parameter by name
+     * @param {string} name
+     * @returns {string}
+     */
     urlParameter(name) {
         return new URL(window.location.href).searchParams.get(name);
+    }
+
+    /**
+     * Get the click ID
+     * @param {string} offerId
+     * @returns {string|any}
+     */
+    clickId(offerId) {
+        return this._fetch(`afclick_${offerId}`);
     }
 }
