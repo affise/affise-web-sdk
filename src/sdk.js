@@ -136,6 +136,92 @@ export default class AffiseSDK {
         });
     }
 
+    conversion(options) {
+        return new Promise((resolve, reject) => {
+            const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
+            const url = new URL(`${trackingDomain}/success.jpg`)
+            const queryParams = new URLSearchParams(url.search + '&success=1');
+
+            // options parameters and their mapping to API parameters
+            const paramsMap = {
+                'afclick': 'click_id',
+                'afstatus': 'status',
+                'offer_id': 'offer_id',
+                'afsecure': 'secure',
+                'afcomment': 'comment',
+                'afid': 'action_id',
+                'afprice': 'sum',
+                'afgoal': 'goal',
+                'promo_code': 'promo_code',
+                'order_sum': 'order_sum',
+                'order_currency': 'order_currency',
+                'user_id': 'user_id',
+            };
+
+            for (let i = 1; i <= 15; i++) {
+                paramsMap[`custom_field${i}`] = `custom_field${i}`;
+            }
+
+            for (const [key, value] of Object.entries(paramsMap)) {
+                if (this._isDefined(options[value])) {
+                    queryParams.set(key, options[value]);
+                }
+            }
+
+            if (this._isDefined(options.items)) {
+                // product feed parameters
+                // tracking structure of product feeds: items[0].order_id, items[0].sku, items[0].quantity, items[0].price
+                for (let i = 0; i < options.items.length; i++) {
+                    if (this._isDefined(options.items[i])) {
+                        /**
+                         * @type {object} item
+                         * @property {string} order_id
+                         * @property {string} sku
+                         * @property {string} quantity
+                         * @property {string} price
+                         */
+                        const item = options.items[i];
+                        if (this._isDefined(item.order_id)) {
+                            queryParams.set(`items[${i}][order_id]`, item.order_id);
+                        }
+                        if (this._isDefined(item.sku)) {
+                            queryParams.set(`items[${i}][sku]`, item.sku);
+                        }
+                        if (this._isDefined(item.quantity)) {
+                            queryParams.set(`items[${i}][quantity]`, item.quantity);
+                        }
+                        if (this._isDefined(item.price)) {
+                            queryParams.set(`items[${i}][price]`, item.price);
+                        }
+                    }
+                }
+            }
+
+            url.search = queryParams.toString();
+
+            fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            })
+                .then((response) => {
+                    if (response.status === 200) {
+                        // Success case - no need to process body
+                        return true;
+                    } else {
+                        console.error(`Error: Received status code ${response.status}`);
+                        return false;
+                    }
+                })
+                .catch((err) => {
+                    console.log(err);
+                    resolve();
+                })
+        });
+    }
+
     _fetch(key) {
         throw new TypeError("Do not call abstract method _fetch")
     }
