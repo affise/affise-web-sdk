@@ -8,7 +8,12 @@ export default {
     output: {
         name: 'ASDK',
         file: 'dist/bundle.js',
-        format: 'umd'
+        format: 'umd',
+        // Add this to ensure the global variable is properly set
+        globals: {
+            window: 'window',
+            document: 'document'
+        }
     },
     plugins: [
         resolve({

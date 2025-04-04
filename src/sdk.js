@@ -1,6 +1,8 @@
+// file: src/sdk.js
 import 'whatwg-fetch';
 import 'url-polyfill';
 import 'promise-polyfill/src/polyfill';
+import { AffiseSDKError, ErrorCodes } from './errors';
 
 export default class AffiseSDK {
     constructor() {
@@ -57,10 +59,15 @@ export default class AffiseSDK {
      * @returns {Promise<string>} - Promise resolving to the click ID
      */
     click(options) {
-        // check required options "offer_id" and "affiliate_id"
+        // Validate required parameters
         if (!this._isDefined(options.affiliate_id) || !this._isDefined(options.offer_id)) {
-            console.warn(`Unable to track. Missing "offer_id" or "affiliate_id" parameter.`)
-            return Promise.resolve("");
+            const error = new AffiseSDKError(
+                ErrorCodes.MISSING_REQUIRED_PARAMS,
+                'Missing required parameters: offer_id and/or affiliate_id',
+                { provided: Object.keys(options) }
+            );
+            console.warn(error.message);
+            return Promise.reject(error);
         }
 
         return new Promise((resolve, reject) => {
@@ -117,26 +124,96 @@ export default class AffiseSDK {
                 method: 'GET',
                 credentials: 'include',
             })
-                .then((response) => response.json(),
+                .then(
+                    (response) => {
+                        if (!response.ok) {
+                            throw new AffiseSDKError(
+                                ErrorCodes.SERVER_ERROR,
+                                `Server responded with status: ${response.status}`,
+                                { status: response.status, url: url.toString() }
+                            );
+                        }
+                        return response.json();
+                    },
                     (error) => {
-                        console.error(error);
-                        resolve("");
-                    })
+                        const networkError = new AffiseSDKError(
+                            ErrorCodes.NETWORK_ERROR,
+                            'Network error occurred while tracking click',
+                            { originalError: error.message }
+                        );
+                        console.error(networkError);
+                        reject(networkError);
+                    }
+                )
                 .then((response) => {
                     if (response.clickid && response.clickid.length > 0) {
-                        // Tracking domain will set cookie "afclick" with clickid,
-                        // but this cookie will be allowed only for 1st party,
-                        // so let's copy clickid to our cookie
-                        // additionally let's associate clickid with offer_id
-                        // to allow tracking of multiple offers from page
                         this._persist(`afclick_${options.offer_id}`, response.clickid, 365);
                         resolve(response.clickid);
+                    } else {
+                        const invalidResponse = new AffiseSDKError(
+                            ErrorCodes.INVALID_RESPONSE,
+                            'Invalid response: missing clickid',
+                            { response }
+                        );
+                        console.error(invalidResponse);
+                        reject(invalidResponse);
                     }
                 })
+                .catch(reject);
         });
     }
 
+    /**
+     * Tracks a conversion with the provided options
+     * @param {object} options
+     * @param {string} options.tracking_domain - Tracking domain to be used for tracking conversions
+     * @param {string} options.click_id - Click ID
+     * @param {string} options.status - Conversion status (1 - confirmed, 2 - pending, 3 - decline, 5 - hold)
+     * @param {string} options.offer_id - Offer ID
+     * @param {string} options.secure - Postback secure code
+     * @param {string} options.comment - Conversion comment
+     * @param {string} options.action_id - External conversion ID
+     * @param {string} options.sum - Conversion sum
+     * @param {string} options.goal - Conversion goal
+     * @param {string} options.promo_code - Promotion code
+     * @param {string} options.order_sum - Updated conversion sum (optional)
+     * @param {string} options.order_currency - Updated conversion currency (optional)
+     * @param {string} options.user_id - Affise user ID
+     * @param {string} options.custom_field1 - Custom field 1
+     * @param {string} options.custom_field2 - Custom field 2
+     * @param {string} options.custom_field3 - Custom field 3
+     * @param {string} options.custom_field4 - Custom field 4
+     * @param {string} options.custom_field5 - Custom field 5
+     * @param {string} options.custom_field6 - Custom field 6
+     * @param {string} options.custom_field7 - Custom field 7
+     * @param {string} options.custom_field8 - Custom field 8
+     * @param {string} options.custom_field9 - Custom field 9
+     * @param {string} options.custom_field10 - Custom field 10
+     * @param {string} options.custom_field11 - Custom field 11
+     * @param {string} options.custom_field12 - Custom field 12
+     * @param {string} options.custom_field13 - Custom field 13
+     * @param {string} options.custom_field14 - Custom field 14
+     * @param {string} options.custom_field15 - Custom field 15
+     * @param {Array} options.items - Array of product feed items
+     * @param {string} options.items[].order_id - Order ID
+     * @param {string} options.items[].sku - SKU
+     * @param {string} options.items[].quantity - Quantity
+     * @param {string} options.items[].price - Price
+     *
+     * @returns {Promise}
+     */
     conversion(options) {
+        // Validate minimum required parameters
+        if (!this._isDefined(options.click_id) && !this._isDefined(options.promo_code)) {
+            const error = new AffiseSDKError(
+                ErrorCodes.MISSING_REQUIRED_PARAMS,
+                'Missing required parameter: click_id or promo_code',
+                { provided: Object.keys(options) }
+            );
+            console.warn(error.message);
+            return Promise.reject(error);
+        }
+
         return new Promise((resolve, reject) => {
             const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
             const url = new URL(`${trackingDomain}/success.jpg`)
@@ -144,18 +221,18 @@ export default class AffiseSDK {
 
             // options parameters and their mapping to API parameters
             const paramsMap = {
-                'afclick': 'click_id',
-                'afstatus': 'status',
-                'offer_id': 'offer_id',
-                'afsecure': 'secure',
-                'afcomment': 'comment',
-                'afid': 'action_id',
-                'afprice': 'sum',
-                'afgoal': 'goal',
-                'promo_code': 'promo_code',
-                'order_sum': 'order_sum',
-                'order_currency': 'order_currency',
-                'user_id': 'user_id',
+                'afclick': 'click_id', // mongoid, affise click id
+                'afstatus': 'status', // integer, possible values: 1 - confirmed, 2 - pending, 3 - decline, 5 - hold
+                'offer_id': 'offer_id', // integer, affise offer id
+                'afsecure': 'secure', // string, postback secure code
+                'afcomment': 'comment', // conversion comment
+                'afid': 'action_id', // external conversion id
+                'afprice': 'sum', // conversion sum
+                'afgoal': 'goal', // conversion goal
+                'promo_code': 'promo_code', // promotion code
+                'order_sum': 'order_sum', // updated conversion sum, use it only if you need to update conversion sum
+                'order_currency': 'order_currency', // updated conversion currency, use it only if you need to update conversion currency
+                'user_id': 'user_id', // affise user id
             };
 
             for (let i = 1; i <= 15; i++) {
@@ -208,17 +285,26 @@ export default class AffiseSDK {
             })
                 .then((response) => {
                     if (response.status === 200) {
-                        // Success case - no need to process body
-                        return true;
+                        resolve(true);
                     } else {
-                        console.error(`Error: Received status code ${response.status}`);
-                        return false;
+                        const serverError = new AffiseSDKError(
+                            ErrorCodes.SERVER_ERROR,
+                            `Error: Received status code ${response.status}`,
+                            { status: response.status, url: url.toString() }
+                        );
+                        console.error(serverError);
+                        reject(serverError);
                     }
                 })
                 .catch((err) => {
-                    console.log(err);
-                    resolve();
-                })
+                    const networkError = new AffiseSDKError(
+                        ErrorCodes.NETWORK_ERROR,
+                        'Network error occurred while tracking conversion',
+                        { originalError: err.message }
+                    );
+                    console.error(networkError);
+                    reject(networkError);
+                });
         });
     }
 

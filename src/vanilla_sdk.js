@@ -1,36 +1,23 @@
-import ASDK from './sdk.js'
+import ASDK from './sdk.js';
+import { AffiseStorage } from './storage.js';
 
 class SDK extends ASDK {
     constructor() {
-        super(Promise.resolve({}))
+        super();
+        this.storage = new AffiseStorage();
     }
 
     _fetch(key) {
-        const cookies = document.cookie
-            .split(';')
-            .map(v => v.split('='))
-            .reduce((acc, v) => {
-                try {
-                    acc[decodeURIComponent(v[0].trim())] = decodeURIComponent(v[1].trim());
-                } catch (e) {
-                }
-                return acc;
-            }, {});
-
-        return cookies[key] ? cookies[key].trim() : '';
+        return this.storage.retrieve(key);
     }
 
     _persist(key, value, expirationDays = 30) {
-        const d = new Date();
-        d.setTime(d.getTime() + (expirationDays * 24 * 60 * 60 * 1000));
-
-        if (value.length > 1650) {
-            value = value.substring(0, 33) + value.substring(value.length - 1616, value.length);
-        }
-        document.cookie = `${key}=${value};expires=${d.toUTCString()};path=/`
+        return this.storage.store(key, value, expirationDays);
     }
 }
 
+// Create a global instance
 const globalInstance = new SDK();
 
-export default globalInstance;
+// Export the instance (not as default to avoid multiple default export conflicts)
+export { globalInstance };

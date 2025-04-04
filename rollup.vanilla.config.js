@@ -4,11 +4,16 @@ import babel from 'rollup-plugin-babel';
 import { uglify } from "rollup-plugin-uglify";
 
 export default {
-    input: 'src/vanilla_sdk.js',
+    input: 'index.js',
     output: {
         name: 'ASDK',
         file: 'dist/affise-vanilla-sdk.js',
-        format: 'iife'
+        format: 'iife',
+        // Add this to ensure the global variable is properly set
+        globals: {
+            window: 'window',
+            document: 'document'
+        }
     },
     plugins: [
         resolve({
