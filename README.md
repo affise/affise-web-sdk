@@ -94,16 +94,11 @@ ASDK.conversion({
 
 ```javascript
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Configure the SDK
-    ASDK.configure({
-        tracking_domain: 'https://track.your-domain.com',
-    });
-
-    // 2. Get tracking parameters from URL
+    // 1. Get tracking parameters from URL
     const offerId = ASDK.urlParameter('offer_id') || 'DEFAULT_OFFER';
     const affiliateId = ASDK.urlParameter('aff_id') || 'DEFAULT_AFFILIATE';
 
-    // 3. Generate a click
+    // 2. Generate a click
     ASDK.click({
         offer_id: offerId,
         affiliate_id: affiliateId,
@@ -122,12 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 ```javascript
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Configure the SDK
-    ASDK.configure({
-        tracking_domain: 'https://track.your-domain.com',
-    });
-
-    // 2. Get order information
+    // 1. Get order information
     const orderDetails = {
         id: 'ORD-12345',
         total: 149.99,
@@ -138,11 +128,11 @@ document.addEventListener('DOMContentLoaded', function() {
         ]
     };
     
-    // 3. Get the offer ID and click ID
+    // 2. Get the offer ID and click ID
     const offerId = ASDK.urlParameter('offer_id') || 'DEFAULT_OFFER';
     const clickId = ASDK.clickId(offerId);
     
-    // 4. Track the conversion with product feed
+    // 3. Track the conversion with product feed
     ASDK.conversion({
         click_id: clickId,
         offer_id: offerId,
