@@ -32,10 +32,8 @@ After including the script, the SDK will be available globally as `ASDK`.
 Configure the SDK with your tracking domain before using it:
 
 ```javascript
-// Configure the SDK with your tracking domain
-ASDK.configure({
-  tracking_domain: 'https://your-tracking-domain.com',
-});
+<!-- Load the SDK -->
+<script src="https://{your-tracking-domain}/websdk.js"></script>
 ```
 
 ## Tracking Clicks
