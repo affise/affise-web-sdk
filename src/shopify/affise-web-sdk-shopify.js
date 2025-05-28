@@ -1,4 +1,4 @@
-var sdkUri = "https://cdn.affise.com/shopify/affise-web-sdk.js";
+var sdkUri = "https://cdn.affise.com/shopify/affise-web-sdk.js?v=" + Date.now();
 !(function (i, n, t) {
     var e = n.getElementsByTagName("script")[0];
     (j = n.createElement("script")), (j.async = !0), (j.src = t), e.parentNode.insertBefore(j, e);
@@ -7,6 +7,7 @@ var sdkUri = "https://cdn.affise.com/shopify/affise-web-sdk.js";
         var n = {},
             t = null,
             useHtmlParsing = false,
+            affisePostbackStatus = null,
             e = (function () {
                 function e() {
                 }
@@ -60,6 +61,12 @@ var sdkUri = "https://cdn.affise.com/shopify/affise-web-sdk.js";
                         (e.prototype.setCallbacks = function (i, t) {
                             (n.orderDataCb = i), (n.initCb = t);
                         }),
+                        (e.prototype.setAffisePostbackStatus = function (status) {
+                            // Validate status is integer between 1 and 6
+                            if (typeof status === 'number' && Number.isInteger(status) && status >= 1 && status <= 6) {
+                                affisePostbackStatus = status;
+                            }
+                        }),
                         e
                 );
             })();
@@ -105,6 +112,9 @@ var sdkUri = "https://cdn.affise.com/shopify/affise-web-sdk.js";
 
         function r(e, o) {
             var r = i.AffiseWebSDK.getShopifyCheckoutData(e, o);
+            if (affisePostbackStatus !== null) {
+                r.afstatus = affisePostbackStatus;
+            }
             n.orderDataCb && "function" == typeof n.orderDataCb && (r = n.orderDataCb(e, r)),
                 (r.is_iframe = !0),
             t && t.init && t.init.data && t.init.data.shop && ((r.sub10 = t.init.data.shop.myshopifyDomain), (r.shopify_shop_id = t.init.data.shop.myshopifyDomain)),

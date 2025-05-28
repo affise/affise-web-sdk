@@ -381,7 +381,7 @@
                     if ("gokwik" == e) {
                         return {
                             afprice: t.customData.total_price || t.total || t.data.checkout.totalPrice.amount,
-                            afid: t.order,
+                            afid: t.customData.order_name || t.order.id || t.data.checkout.order.id,
                             custom_field1: t.customData.total_price || t.total || t.data.checkout.totalPrice.amount,
                             custom_field2: t.currency,
                             custom_field3: t.date,
@@ -392,7 +392,7 @@
                     if ("direct" == e) {
                         return {
                             afprice: t.total,
-                            afid: t.order,
+                            afid: t.order.id,
                             custom_field1: t.total,
                             custom_field2: t.currency,
                             custom_field3: t.date,
