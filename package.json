@@ -2,11 +2,9 @@
   "name": "@affise/affise-web-sdk",
   "version": "0.1.1",
   "description": "Affise Web SDK",
-  "main": "dist/bundle.js",
+  "main": "dist/affise-web-sdk.js",
   "scripts": {
-    "vanilla": "rollup -c rollup.vanilla.config.js",
-    "umd": "rollup -c rollup.npm.config.js",
-    "build": "npm run vanilla && npm run umd"
+    "build": "rollup --config"
   },
   "repository": {
     "type": "git",
