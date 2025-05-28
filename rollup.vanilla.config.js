@@ -7,8 +7,8 @@ export default {
     input: 'index.js',
     output: {
         name: 'ASDK',
-        file: 'dist/bundle.js',
-        format: 'umd',
+        file: 'dist/affise-vanilla-sdk.js',
+        format: 'iife',
         // Add this to ensure the global variable is properly set
         globals: {
             window: 'window',
