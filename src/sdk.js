@@ -2,7 +2,7 @@
 import 'whatwg-fetch';
 import 'url-polyfill';
 import 'promise-polyfill/src/polyfill';
-import { AffiseSDKError, ErrorCodes } from './errors';
+import {AffiseSDKError, ErrorCodes} from './errors';
 
 export default class AffiseSDK {
     constructor() {
@@ -19,17 +19,56 @@ export default class AffiseSDK {
         }
 
         this._trackingDomain = '<<.TrackingDomain>>';
+        this._useGoogleTransparency = false;
+        this._clientId = null;
     }
 
     /**
      * Configures the SDK with the provided options
      * @param {Object} options
      * @param {string} options.tracking_domain - Tracking domain to be used for tracking clicks
+     * @param {boolean} [options.use_google_transparency] - Enable Google transparency domain mode
+     * @param {number} [options.client_id] - Client ID (required when use_google_transparency is true)
      */
     configure(options) {
         if (this._isDefined(options.tracking_domain)) {
             this._trackingDomain = options.tracking_domain;
         }
+        if (this._isDefined(options.client_id)) {
+            this._clientId = options.client_id;
+        }
+        if (this._isDefined(options.use_google_transparency)) {
+            this._useGoogleTransparency = options.use_google_transparency;
+
+            if (this._useGoogleTransparency && !this._isDefined(options.client_id)) {
+                throw new AffiseSDKError(
+                    ErrorCodes.CONFIG_ERROR,
+                    'client_id is required when use_google_transparency is enabled'
+                );
+            }
+        }
+    }
+
+    clickURL(options) {
+        const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
+        if (this._useGoogleTransparency && this._clientId) {
+            // Google transparency domain format: <domain>/click/<client_id>
+            return new URL(`${trackingDomain}/click/${this._clientId}`);
+        }
+
+        // Regular format: <domain>/click
+        return new URL(`${trackingDomain}/click`);
+    }
+
+    conversionURL(options) {
+        const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
+        if (this._useGoogleTransparency && this._clientId) {
+            // Google transparency domain format: <domain>/success/<client_id>
+            return new URL(`${trackingDomain}/success/${this._clientId}`);
+        }
+
+        // Regular format: <domain>/success.jpg
+        return new URL(`${trackingDomain}/success.jpg`);
     }
 
     /**
@@ -64,15 +103,14 @@ export default class AffiseSDK {
             const error = new AffiseSDKError(
                 ErrorCodes.MISSING_REQUIRED_PARAMS,
                 'Missing required parameters: offer_id and/or affiliate_id',
-                { provided: Object.keys(options) }
+                {provided: Object.keys(options)}
             );
             console.warn(error.message);
             return Promise.reject(error);
         }
 
         return new Promise((resolve, reject) => {
-            const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
-            const url = new URL(`${trackingDomain}/click`)
+            let url = this.clickURL(options);
             const queryParams = new URLSearchParams(url.search + '&format=json&websdk=1');
 
             // required parameters
@@ -130,7 +168,7 @@ export default class AffiseSDK {
                             throw new AffiseSDKError(
                                 ErrorCodes.SERVER_ERROR,
                                 `Server responded with status: ${response.status}`,
-                                { status: response.status, url: url.toString() }
+                                {status: response.status, url: url.toString()}
                             );
                         }
                         return response.json();
@@ -139,7 +177,7 @@ export default class AffiseSDK {
                         const networkError = new AffiseSDKError(
                             ErrorCodes.NETWORK_ERROR,
                             'Network error occurred while tracking click',
-                            { originalError: error.message }
+                            {originalError: error.message}
                         );
                         console.error(networkError);
                         reject(networkError);
@@ -153,7 +191,7 @@ export default class AffiseSDK {
                         const invalidResponse = new AffiseSDKError(
                             ErrorCodes.INVALID_RESPONSE,
                             'Invalid response: missing clickid',
-                            { response }
+                            {response}
                         );
                         console.error(invalidResponse);
                         reject(invalidResponse);
@@ -208,16 +246,19 @@ export default class AffiseSDK {
             const error = new AffiseSDKError(
                 ErrorCodes.MISSING_REQUIRED_PARAMS,
                 'Missing required parameter: click_id or promo_code',
-                { provided: Object.keys(options) }
+                {provided: Object.keys(options)}
             );
             console.warn(error.message);
             return Promise.reject(error);
         }
 
         return new Promise((resolve, reject) => {
-            const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
-            const url = new URL(`${trackingDomain}/success.jpg`)
+            const url = this.conversionURL(options);
             const queryParams = new URLSearchParams(url.search + '&success=1');
+            // Add client_id if using Google transparency domain
+            if (this._useGoogleTransparency && this._clientId) {
+                queryParams.set('client_id', this._clientId);
+            }
 
             // options parameters and their mapping to API parameters
             const paramsMap = {
@@ -290,7 +331,7 @@ export default class AffiseSDK {
                         const serverError = new AffiseSDKError(
                             ErrorCodes.SERVER_ERROR,
                             `Error: Received status code ${response.status}`,
-                            { status: response.status, url: url.toString() }
+                            {status: response.status, url: url.toString()}
                         );
                         console.error(serverError);
                         reject(serverError);
@@ -300,7 +341,7 @@ export default class AffiseSDK {
                     const networkError = new AffiseSDKError(
                         ErrorCodes.NETWORK_ERROR,
                         'Network error occurred while tracking conversion',
-                        { originalError: err.message }
+                        {originalError: err.message}
                     );
                     console.error(networkError);
                     reject(networkError);
