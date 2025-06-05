@@ -60,6 +60,17 @@ export default class AffiseSDK {
         return new URL(`${trackingDomain}/click`);
     }
 
+    conversionURL(options) {
+        const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
+        if (this._useGoogleTransparency && this._clientId) {
+            // Google transparency domain format: <domain>/success/<client_id>
+            return new URL(`${trackingDomain}/success/${this._clientId}`);
+        }
+
+        // Regular format: <domain>/success.jpg
+        return new URL(`${trackingDomain}/success.jpg`);
+    }
+
     /**
      * Tracks a click with the provided options
      * @param {Object} options - Click tracking options
@@ -242,8 +253,7 @@ export default class AffiseSDK {
         }
 
         return new Promise((resolve, reject) => {
-            const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
-            const url = new URL(`${trackingDomain}/success.jpg`)
+            const url = this.conversionURL(options);
             const queryParams = new URLSearchParams(url.search + '&success=1');
             // Add client_id if using Google transparency domain
             if (this._useGoogleTransparency && this._clientId) {
