@@ -64,7 +64,7 @@ export default class AffiseSDK {
         const trackingDomain = this._isDefined(options.tracking_domain) ? options.tracking_domain : this._trackingDomain;
         if (this._useGoogleTransparency && this._clientId) {
             // Google transparency domain format: <domain>/success/<client_id>
-            return new URL(`${trackingDomain}/success/${this._clientId}`);
+            return new URL(`${trackingDomain}/success.jpg/${this._clientId}`);
         }
 
         // Regular format: <domain>/success.jpg
